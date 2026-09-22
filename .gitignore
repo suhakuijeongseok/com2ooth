@@ -1,0 +1,5 @@
+.venv/
+.statiz_chrome_profile/
+output/
+__pycache__/
+diagnostic_output/
