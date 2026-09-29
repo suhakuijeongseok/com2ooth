@@ -10,17 +10,53 @@
 .game-stage{perspective:900px;transform-origin:50% 63%}
 .game-stage:before{content:"";position:absolute;z-index:1;left:50%;bottom:-17%;width:380px;height:260px;transform:translateX(-50%) rotateX(68deg);border:3px solid rgba(255,255,255,.5);border-top-color:transparent;box-shadow:inset 0 0 70px #a66a3440;clip-path:polygon(12% 0,88% 0,100% 100%,0 100%)}
 .game-stage:after{content:"";position:absolute;z-index:2;left:50%;bottom:7.5%;width:96px;height:68px;transform:translateX(-50%) rotateX(55deg);background:#eef2ed;clip-path:polygon(10% 0,90% 0,100% 62%,50% 100%,0 62%);filter:drop-shadow(0 3px 2px #0008)}
-.release-marker{position:absolute;z-index:3;left:50%;top:50.5%;width:5px;height:5px;border-radius:50%;background:#fff8;box-shadow:0 0 15px #a9dcff;transform:translate(-50%,-50%)}
+.release-marker{position:absolute;z-index:3;left:calc(50% + var(--release-x,-12px));top:var(--release-y,50.5%);width:5px;height:5px;border-radius:50%;background:#fff8;box-shadow:0 0 15px #a9dcff;transform:translate(-50%,-50%);transition:left .25s,top .25s}
 .pitcher-figure{top:53%;transform:translate(-50%,-50%) scale(.86);transition:filter .2s}
 .pitcher-figure .arm{position:absolute;z-index:1;top:35px;width:13px;height:57px;border-radius:8px;background:linear-gradient(90deg,#d9e8f8,#4389d0);transform-origin:50% 8px}
-.pitcher-figure .glove-arm{left:-1px;transform:rotate(22deg)}
-.pitcher-figure .throw-arm{right:-3px;transform:rotate(-25deg)}
+.pitcher-figure .glove-arm{right:-1px;transform:rotate(22deg)}
+.pitcher-figure .throw-arm{left:-3px;transform:rotate(-25deg)}
+/* Detailed human pitcher */
+.pitcher-figure{width:72px;height:160px;filter:drop-shadow(0 8px 5px #000a) drop-shadow(0 0 10px #78bfff2b)}
+.pitcher-figure .pitcher-shadow{position:absolute;z-index:0;left:3px;bottom:-8px;width:68px;height:15px;border-radius:50%;background:#0009;filter:blur(5px);transform:rotate(-3deg)}
+.pitcher-figure .neck{position:absolute;z-index:3;left:28px;top:38px;width:20px;height:16px;border-radius:4px;background:linear-gradient(90deg,#875037,#d99a6c)}
+.pitcher-figure .head{z-index:6;left:22px;top:7px;width:32px;height:38px;border-radius:48% 45% 46% 50%;background:linear-gradient(105deg,#875035 0,#ce9168 38%,#efbd8e 70%,#9d5e3d 100%);box-shadow:inset -4px -3px 5px #5e2d1b66}
+.pitcher-figure .head:before{content:"";position:absolute;right:6px;top:15px;width:3px;height:3px;border-radius:50%;background:#201713;box-shadow:-10px 0 0 #201713}
+.pitcher-figure .head:after{content:"";position:absolute;right:8px;bottom:7px;width:9px;height:3px;border-bottom:1.5px solid #663622;border-radius:50%}
+.pitcher-figure .ear{position:absolute;z-index:5;left:17px;top:22px;width:10px;height:13px;border-radius:50%;background:#bd805b;box-shadow:inset 2px 0 2px #6f3d2b}
+.pitcher-figure .cap{z-index:8;left:16px;top:0;width:44px;height:21px;border-radius:55% 55% 18% 18%;background:linear-gradient(120deg,#062a58,#0b70cb 55%,#041d40);box-shadow:inset 0 3px 3px #55b7ff66,0 2px 2px #0008}
+.pitcher-figure .cap:after{content:"";position:absolute;right:-12px;bottom:0;width:28px;height:6px;border-radius:70% 30% 50% 20%;background:#073b77;transform:skewX(-24deg);box-shadow:0 2px 2px #0007}
+.pitcher-figure .body{z-index:3;left:10px;top:47px;width:56px;height:69px;border-radius:16px 16px 8px 8px;background:linear-gradient(100deg,#9fb5c9 0,#fbfdff 35%,#e8f3fc 61%,#467fad 100%);box-shadow:inset 5px 0 7px #fff8,inset -7px 0 9px #174b7b66}
+.pitcher-figure .body:before{content:"";position:absolute;left:22px;top:0;width:12px;height:15px;border-radius:0 0 8px 8px;background:#123f73;border-inline:3px solid #e4edf6}
+.pitcher-figure .body:after{content:"17";position:absolute;left:17px;top:22px;color:#175c9f;font:900 18px Oswald;letter-spacing:-2px;text-shadow:1px 1px #fff}
+.pitcher-figure .jersey-detail{position:absolute;z-index:5;left:38px;top:63px;width:1px;height:45px;background:#7694af;box-shadow:3px 0 0 #fff9}
+.pitcher-figure .belt{position:absolute;z-index:6;left:12px;top:108px;width:52px;height:8px;border-radius:2px;background:linear-gradient(#263545,#050a10);box-shadow:inset 25px 0 0 -20px #c4ced7}
+.pitcher-figure .arm{z-index:2;top:50px;width:17px;height:58px;border-radius:10px;background:linear-gradient(90deg,#7897b3,#f4f9fd 47%,#3775aa);box-shadow:inset -3px 0 4px #17446766}
+.pitcher-figure .arm:before{content:"";position:absolute;left:2px;bottom:-27px;width:13px;height:36px;border-radius:8px;background:linear-gradient(90deg,#985f42,#e6ad7d 55%,#a36343);transform:rotate(8deg);transform-origin:50% 4px;box-shadow:inset -2px 0 3px #68382155}
+.pitcher-figure .throw-arm:after{content:"";position:absolute;left:1px;bottom:-33px;width:15px;height:15px;border-radius:50%;background:#dda274;box-shadow:inset -3px -2px 3px #76432d66}
+.pitcher-figure .glove-arm:after{content:"";position:absolute;left:-5px;bottom:-38px;width:27px;height:31px;border-radius:50% 45% 55% 40%;background:linear-gradient(135deg,#8a4d20,#3b1c0d);box-shadow:inset 4px 3px 0 #ba7435,inset -4px -4px 5px #180b06}
+.pitcher-figure>.glove{display:none}
+.pitcher-figure .leg{z-index:2;top:111px;width:21px;height:47px;border-radius:4px 4px 8px 8px;background:linear-gradient(90deg,#778fa4,#fbfdff 48%,#69859e);box-shadow:inset -3px 0 4px #27425d55;transform-origin:50% 3px}
+.pitcher-figure .leg.left{left:16px;transform:rotate(5deg)}
+.pitcher-figure .leg.right{right:11px;transform:rotate(-5deg)}
+.pitcher-figure .leg:after{content:"";position:absolute;left:-4px;bottom:-5px;width:27px;height:11px;border-radius:10px 13px 3px 3px;background:linear-gradient(#17314e,#02060c);border-bottom:2px solid #58b9ed}
+.pitcher-figure>.shoe{display:none}
 .pitcher-figure.windup{animation:pitcher-body .72s cubic-bezier(.45,0,.4,1) forwards}
 .pitcher-figure.windup .throw-arm{animation:throwing-arm .72s cubic-bezier(.5,0,.35,1) forwards}
 .pitcher-figure.windup .glove-arm{animation:glove-arm .72s ease-in-out forwards}
 .pitcher-figure.windup .left{animation:front-leg .72s ease-in-out forwards}
+.pitcher-figure.left-handed{transform:translate(-50%,-50%) scaleX(-1) scale(.86)}
+.pitcher-figure.left-handed.windup{animation:pitcher-body-left .72s cubic-bezier(.45,0,.4,1) forwards}
+.pitcher-figure.sidearm.windup,.pitcher-figure.underhand.windup{animation:pitcher-body-sidearm .72s cubic-bezier(.45,0,.4,1) forwards}
+.pitcher-figure.left-handed.sidearm.windup,.pitcher-figure.left-handed.underhand.windup{animation:pitcher-body-sidearm-left .72s cubic-bezier(.45,0,.4,1) forwards}
+.pitcher-figure.sidearm.windup .throw-arm{animation:throwing-arm-sidearm .72s cubic-bezier(.5,0,.35,1) forwards}
+.pitcher-figure.underhand.windup .throw-arm{animation:throwing-arm-under .72s cubic-bezier(.5,0,.35,1) forwards}
 @keyframes pitcher-body{0%{transform:translate(-50%,-50%) scale(.86) rotate(0)}45%{transform:translate(-57%,-55%) scale(.86) rotate(-8deg)}100%{transform:translate(-42%,-48%) scale(.86) rotate(12deg)}}
+@keyframes pitcher-body-left{0%{transform:translate(-50%,-50%) scaleX(-1) scale(.86) rotate(0)}45%{transform:translate(-43%,-55%) scaleX(-1) scale(.86) rotate(-8deg)}100%{transform:translate(-58%,-48%) scaleX(-1) scale(.86) rotate(12deg)}}
+@keyframes pitcher-body-sidearm{0%{transform:translate(-50%,-50%) scale(.86) rotate(0)}45%{transform:translate(-57%,-51%) scale(.86) rotate(-10deg)}100%{transform:translate(-39%,-46%) scale(.86) rotate(18deg)}}
+@keyframes pitcher-body-sidearm-left{0%{transform:translate(-50%,-50%) scaleX(-1) scale(.86) rotate(0)}45%{transform:translate(-43%,-51%) scaleX(-1) scale(.86) rotate(-10deg)}100%{transform:translate(-61%,-46%) scaleX(-1) scale(.86) rotate(18deg)}}
 @keyframes throwing-arm{0%{transform:rotate(-25deg)}42%{transform:rotate(-150deg)}75%{transform:rotate(70deg)}100%{transform:rotate(115deg)}}
+@keyframes throwing-arm-sidearm{0%{transform:rotate(-25deg)}42%{transform:rotate(-145deg)}72%{transform:rotate(18deg)}100%{transform:rotate(72deg)}}
+@keyframes throwing-arm-under{0%{transform:rotate(-20deg)}42%{transform:rotate(-125deg)}72%{transform:rotate(-18deg)}100%{transform:rotate(42deg)}}
 @keyframes glove-arm{0%{transform:rotate(22deg)}55%{transform:rotate(-58deg)}100%{transform:rotate(-20deg)}}
 @keyframes front-leg{0%{transform:rotate(8deg) translateY(0)}40%{transform:rotate(-55deg) translate(-7px,-25px)}100%{transform:rotate(34deg) translate(7px,1px)}}
 .batter-view{position:absolute;z-index:18;right:5.5%;bottom:8%;width:310px;height:270px;pointer-events:none;filter:drop-shadow(0 15px 13px #000b)}
@@ -31,8 +67,10 @@
 .batter-view .bat:after{content:"";position:absolute;bottom:-30px;left:-3px;width:24px;height:44px;border-radius:8px;background:#17283e}
 .batter-view .bat.swinging{transform:rotate(118deg);filter:blur(.7px);transition-duration:.13s}
 .strike-zone{top:62%;width:146px;height:178px;background:#0b62b00a;opacity:.72}
-.ball{width:18px;height:18px;margin:-9px;background:radial-gradient(circle at 32% 25%,#fff 0 34%,#f0eee7 54%,#aaa89f 100%);box-shadow:0 0 8px #fff,0 0 24px #a6ddff;overflow:hidden}
+.ball{width:21px;height:21px;margin:-10.5px;background:radial-gradient(circle at 32% 25%,#fff 0 34%,#f7f4e9 54%,#9d9b92 100%);box-shadow:0 0 0 1px #ffffffcc,0 0 12px 3px #fff,0 0 34px 9px #41bfff;overflow:hidden}
 .ball:after{right:14px;top:7px;width:150px;height:5px;background:linear-gradient(90deg,transparent,#c4eaff22 15%,#d9f3ffad);filter:blur(3px);transform-origin:right center}
+.ball-trail{position:absolute;inset:0;z-index:14;pointer-events:none}
+.ball-trail i{position:absolute;width:13px;height:13px;border-radius:50%;background:#eafaff;box-shadow:0 0 8px 2px #fff,0 0 18px 5px #39bfff;will-change:left,top,transform,opacity}
 .ball .seam{position:absolute;inset:3px;border:1.5px solid #b22b35;border-left-color:transparent;border-right-color:transparent;border-radius:50%}
 .ball .seam-b{transform:rotate(90deg) scaleX(.55)}
 .ball:not(.hidden) .seam-a{animation:seam-spin .11s linear infinite}

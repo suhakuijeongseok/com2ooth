@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000">
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="7" stdDeviation="10" flood-color="#18324b" flood-opacity=".14"/></filter>
+    <marker id="arrow" markerWidth="11" markerHeight="11" refX="9" refY="5.5" orient="auto"><path d="M0,0 L11,5.5 L0,11 Z" fill="#334155"/></marker>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f7fbff"/><stop offset="1" stop-color="#f2f7f4"/></linearGradient>
+    <style>
+      text{font-family:'Malgun Gothic','Noto Sans KR',sans-serif;fill:#172033} .title{font-size:38px;font-weight:800}.subtitle{font-size:18px;fill:#526174}.boxTitle{font-size:25px;font-weight:800}.section{font-size:17px;font-weight:800}.body{font-size:16px}.relation{font-size:16px;font-weight:700;fill:#344256}.small{font-size:14px;fill:#607084}
+    </style>
+  </defs>
+  <rect width="1600" height="1000" fill="url(#bg)"/>
+  <rect x="55" y="40" width="1490" height="102" rx="22" fill="#e2efff"/>
+  <circle cx="105" cy="91" r="25" fill="#3478e5"/><path d="M91 91h28M105 77v28" stroke="white" stroke-width="5" stroke-linecap="round"/>
+  <text x="148" y="88" class="title">객체 기반 다이어그램</text>
+  <text x="148" y="119" class="subtitle">실제 투수 데이터를 활용한 타이밍 배팅 게임</text>
+  <rect x="1120" y="59" width="385" height="64" rx="14" fill="white" opacity=".9"/>
+  <text x="1142" y="84" class="small">핵심 객체의 속성·기능과</text><text x="1142" y="106" class="small">게임 진행 중 상호작용을 표현한 설계도</text>
+
+  <!-- Pitcher -->
+  <g filter="url(#shadow)"><rect x="70" y="205" width="390" height="300" rx="16" fill="#fff" stroke="#3c82e6" stroke-width="3"/><path d="M70 221a16 16 0 0 1 16-16h358a16 16 0 0 1 16 16v49H70z" fill="#dcebff"/><path d="M70 270h390M70 385h390" stroke="#8db8f1" stroke-width="2"/></g>
+  <text x="265" y="247" text-anchor="middle" class="boxTitle">Pitcher (투수)</text>
+  <text x="92" y="301" class="section">속성</text><text x="92" y="329" class="body">- name : 선수 이름</text><text x="92" y="354" class="body">- season : 시즌 정보</text><text x="92" y="379" class="body">- pitches : 보유 구종 목록</text>
+  <text x="92" y="418" class="section">메서드</text><text x="92" y="447" class="body">- selectPitch() : 구사율에 따라 구종 선택</text><text x="92" y="474" class="body">- getAverageSpeed() : 평균 구속 계산</text>
+
+  <!-- Pitch -->
+  <g filter="url(#shadow)"><rect x="1140" y="205" width="390" height="300" rx="16" fill="#fff" stroke="#e2525c" stroke-width="3"/><path d="M1140 221a16 16 0 0 1 16-16h358a16 16 0 0 1 16 16v49h-390z" fill="#ffe3e4"/><path d="M1140 270h390M1140 385h390" stroke="#efa0a5" stroke-width="2"/></g>
+  <text x="1335" y="247" text-anchor="middle" class="boxTitle">Pitch (투구)</text>
+  <text x="1162" y="301" class="section">속성</text><text x="1162" y="329" class="body">- pitchType : 구종</text><text x="1162" y="354" class="body">- velocity : 구속</text><text x="1162" y="379" class="body">- ratio : 실제 구사율</text>
+  <text x="1162" y="418" class="section">메서드</text><text x="1162" y="447" class="body">- move() : 구종별 궤적으로 이동</text><text x="1162" y="474" class="body">- reachPlate() : 홈 플레이트 도착 판정</text>
+
+  <!-- Batter -->
+  <g filter="url(#shadow)"><rect x="70" y="650" width="390" height="285" rx="16" fill="#fff" stroke="#9365d8" stroke-width="3"/><path d="M70 666a16 16 0 0 1 16-16h358a16 16 0 0 1 16 16v49H70z" fill="#eee5ff"/><path d="M70 715h390M70 830h390" stroke="#bea6e4" stroke-width="2"/></g>
+  <text x="265" y="697" text-anchor="middle" class="boxTitle">Batter (타자)</text>
+  <text x="92" y="746" class="section">속성</text><text x="92" y="774" class="body">- hits : 안타 수</text><text x="92" y="799" class="body">- misses : 실패 수</text><text x="92" y="824" class="body">- bestStreak : 최고 연속 점수</text>
+  <text x="92" y="863" class="section">메서드</text><text x="92" y="892" class="body">- swing() : 스윙 입력 처리</text><text x="92" y="919" class="body">- updateScore() : 결과와 점수 갱신</text>
+
+  <!-- Game -->
+  <g filter="url(#shadow)"><rect x="1140" y="650" width="390" height="285" rx="16" fill="#fff" stroke="#31a56a" stroke-width="3"/><path d="M1140 666a16 16 0 0 1 16-16h358a16 16 0 0 1 16 16v49h-390z" fill="#dff6e8"/><path d="M1140 715h390M1140 830h390" stroke="#8fd0aa" stroke-width="2"/></g>
+  <text x="1335" y="697" text-anchor="middle" class="boxTitle">Game (게임 관리)</text>
+  <text x="1162" y="746" class="section">속성</text><text x="1162" y="774" class="body">- phase : 현재 진행 상태</text><text x="1162" y="799" class="body">- pitcher : 선택된 투수</text><text x="1162" y="824" class="body">- currentPitch : 현재 투구</text>
+  <text x="1162" y="863" class="section">메서드</text><text x="1162" y="892" class="body">- startRound() : 투구 시작</text><text x="1162" y="919" class="body">- judgeTiming() : 타격 타이밍 판정</text>
+
+  <!-- Relations -->
+  <path d="M460 305 C690 235 910 235 1140 305" fill="none" stroke="#334155" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="650" y="203" width="300" height="67" rx="12" fill="#fff" stroke="#d9e1ea"/><text x="800" y="230" text-anchor="middle" class="relation">투수가 실제 구사율에 따라</text><text x="800" y="254" text-anchor="middle" class="relation">하나의 Pitch를 생성한다</text>
+
+  <path d="M1140 440 C925 535 675 615 460 740" fill="none" stroke="#334155" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="650" y="502" width="300" height="67" rx="12" fill="#fff" stroke="#d9e1ea"/><text x="800" y="529" text-anchor="middle" class="relation">Pitch가 타석에 도착하기 전에</text><text x="800" y="553" text-anchor="middle" class="relation">Batter가 스윙한다</text>
+
+  <path d="M460 830 C680 915 920 915 1140 830" fill="none" stroke="#334155" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="650" y="855" width="300" height="67" rx="12" fill="#fff" stroke="#d9e1ea"/><text x="800" y="882" text-anchor="middle" class="relation">스윙 결과를 전달해</text><text x="800" y="906" text-anchor="middle" class="relation">점수와 다음 라운드를 갱신한다</text>
+
+  <path d="M1140 705 C1030 630 1030 485 1140 410" fill="none" stroke="#334155" stroke-width="3" marker-end="url(#arrow)"/>
+  <rect x="940" y="542" width="190" height="67" rx="12" fill="#fff" stroke="#d9e1ea"/><text x="1035" y="569" text-anchor="middle" class="relation">Game이 Pitch의</text><text x="1035" y="593" text-anchor="middle" class="relation">이동과 도착을 관리</text>
+</svg>
