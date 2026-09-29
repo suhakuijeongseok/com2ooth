@@ -40,6 +40,14 @@
 .pitcher-figure .leg.right{right:11px;transform:rotate(-5deg)}
 .pitcher-figure .leg:after{content:"";position:absolute;left:-4px;bottom:-5px;width:27px;height:11px;border-radius:10px 13px 3px 3px;background:linear-gradient(#17314e,#02060c);border-bottom:2px solid #58b9ed}
 .pitcher-figure>.shoe{display:none}
+.pitcher-figure.sprite-pitcher{--sprite-image:url("assets/pitcher-right-overhand.png");width:150px;height:150px;background:none;filter:drop-shadow(0 7px 5px #000b) drop-shadow(0 0 7px #73baff35)}
+.pitcher-figure.sprite-pitcher.underhand{--sprite-image:url("assets/pitcher-right-underhand.png")}
+.pitcher-figure.sprite-pitcher:before,.pitcher-figure.sprite-pitcher:after{content:"";position:absolute;inset:0;background-image:var(--sprite-image);background-size:400% 300%;background-repeat:no-repeat;pointer-events:none}
+.pitcher-figure.sprite-pitcher:before{background-position:var(--sprite-from-x,0%) var(--sprite-from-y,0%);opacity:calc(1 - var(--sprite-mix,0))}
+.pitcher-figure.sprite-pitcher:after{background-position:var(--sprite-to-x,0%) var(--sprite-to-y,0%);opacity:var(--sprite-mix,0)}
+.pitcher-figure.sprite-pitcher>i{display:none}
+.pitcher-figure.sprite-pitcher.windup{animation:none}
+.pitcher-figure.sprite-pitcher.left-handed.windup{animation:none}
 .pitcher-figure.windup{animation:pitcher-body .72s cubic-bezier(.45,0,.4,1) forwards}
 .pitcher-figure.windup .throw-arm{animation:throwing-arm .72s cubic-bezier(.5,0,.35,1) forwards}
 .pitcher-figure.windup .glove-arm{animation:glove-arm .72s ease-in-out forwards}
