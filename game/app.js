@@ -2,9 +2,38 @@ const state={players:[],pitcher:null,phase:"idle",pitch:null,startedAt:0,duratio
 const $=id=>document.getElementById(id);
 const ui={select:$("selectScreen"),game:$("gameScreen"),stage:$("gameStage"),pitcher:$("pitcherFigure"),grid:$("pitcherGrid"),name:$("pitcherName"),season:$("seasonLabel"),ball:$("ball"),trail:$("ballTrail"),bat:$("bat"),action:$("actionButton"),status:$("status"),last:$("lastPitch"),arsenal:$("arsenal"),hits:$("hitCount"),misses:$("missCount"),best:$("bestScore"),needle:$("timingNeedle"),burst:$("contactBurst"),result:$("resultFlash")};
 const setAction=label=>{ui.action.querySelector("b").textContent=label};
-const movements={"4seam":[0,-4],"2seam":[-34,10],cutt:[32,3],slid:[68,22],curv:[-22,48],chan:[-38,31],fork:[7,57],splt:[6,53],sinker:[-43,34],other:[0,10]};
+const movements={
+  "4seam":{x:0,y:-7,onset:.38},
+  "2seam":{x:-42,y:14,onset:.25},
+  cutt:{x:34,y:5,onset:.34},
+  slid:{x:78,y:28,onset:.22},
+  curv:{x:-18,y:62,onset:.18},
+  chan:{x:-45,y:36,onset:.24},
+  fork:{x:6,y:70,onset:.32},
+  splt:{x:5,y:66,onset:.32},
+  sinker:{x:-52,y:44,onset:.22},
+  other:{x:0,y:12,onset:.3}
+};
+const underhandMovements={
+  "4seam":{x:-10,y:55,onset:.18},
+  "2seam":{x:-18,y:64,onset:.16},
+  cutt:{x:34,y:-18,onset:.24},
+  slid:{x:58,y:-36,onset:.2},
+  curv:{x:28,y:-20,onset:.18},
+  chan:{x:-22,y:58,onset:.2},
+  fork:{x:0,y:78,onset:.25},
+  splt:{x:0,y:74,onset:.25},
+  sinker:{x:-14,y:70,onset:.15},
+  other:{x:0,y:38,onset:.2}
+};
 const MOUND_TO_PLATE_METERS=18.44;
 const GAMEPLAY_FLIGHT_TIME_SCALE=1.22;
+const VELOCITY_REFERENCE_KMH=145;
+const VELOCITY_DIFFERENCE_EXPONENT=.65;
+const MIN_FLIGHT_TIME_MS=500;
+const MAX_FLIGHT_TIME_MS=850;
+const HORIZONTAL_BREAK_SCALE=1.2;
+const VERTICAL_BREAK_PERCENT_SCALE=.105;
 const WINDUP_DURATION_MS=1050;
 const FOLLOW_THROUGH_DURATION_MS=500;
 const CONTACT_PROGRESS=.91;
@@ -12,6 +41,8 @@ const PERFECT_WINDOW_MS=50;
 const HIT_WINDOW_MS=115;
 const BATTED_BALL_DURATION_MS=420;
 const RESULT_DISPLAY_MS=850;
+function flightDurationForVelocity(velocityKmh){const velocity=Math.max(80,Number(velocityKmh)||135),physical=MOUND_TO_PLATE_METERS/(velocity/3.6)*1000,emphasis=Math.pow(VELOCITY_REFERENCE_KMH/velocity,VELOCITY_DIFFERENCE_EXPONENT);return Math.min(MAX_FLIGHT_TIME_MS,Math.max(MIN_FLIGHT_TIME_MS,physical*GAMEPLAY_FLIGHT_TIME_SCALE*emphasis))}
+function movementForPitch(code,profile){const table=profile?.form==="under"?underhandMovements:movements;return table[code]||table.other}
 function preloadSprite(src){const image=new Image();image.src=src;return image.decode?image.decode().catch(()=>{}):Promise.resolve()}
 const waitForPaint=()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
 const spriteReady={over:preloadSprite("assets/pitcher-right-overhand-30-normalized.png"),under:preloadSprite("assets/pitcher-right-underhand-normalized.png")};
@@ -39,7 +70,7 @@ function measureReleasePoint(){const layout=getSpriteLayout(),stageRect=ui.stage
 function playPitcherSequence(now){if(state.phase!=="windup"&&state.phase!=="pitching")return;const layout=getSpriteLayout(),elapsed=now-state.sequenceStartedAt,totalDuration=layout.windupDuration+layout.followDuration;let targetPose;if(elapsed<layout.windupDuration){targetPose=Math.min(layout.releaseIndex,Math.floor(elapsed/layout.windupDuration*(layout.releaseIndex+1)))}else{const followProgress=Math.min(1,(elapsed-layout.windupDuration)/layout.followDuration);targetPose=layout.releaseIndex+Math.min(layout.count-1-layout.releaseIndex,Math.floor(followProgress*(layout.count-layout.releaseIndex)))}state.spritePose=Math.min(targetPose,state.spritePose+1);setPitcherFrame(state.spritePose);if(state.phase==="windup"&&elapsed>=layout.windupDuration&&state.spritePose===layout.releaseIndex)releasePitchFromHand(now);if(elapsed<totalDuration||state.spritePose<layout.count-1)state.spriteTimer=requestAnimationFrame(playPitcherSequence)}
 
 function releasePitchFromHand(releaseTime=performance.now()){if(state.phase!=="windup")return;setPitcherFrame(getSpriteLayout().releaseIndex);const point=measureReleasePoint();state.releaseX=point.x-point.stageWidth/2;state.releaseY=point.y/point.stageHeight*100;state.ballX=state.releaseX;state.ballY=state.releaseY;state.ballScale=.38;state.phase="pitching";state.startedAt=releaseTime;clearTrail();ui.ball.style.left=`calc(50% + ${state.releaseX}px)`;ui.ball.style.top=`${state.releaseY}%`;ui.ball.style.transform="scale(.38) rotate(0deg)";ui.ball.style.filter="blur(0)";void ui.ball.offsetWidth;ui.ball.classList.remove("hidden");ui.stage.classList.add("pitch-flight");setAction("스윙!");ui.status.textContent="공을 끝까지 보세요";ui.last.textContent="구종은 타격 후 공개됩니다";state.frame=requestAnimationFrame(animatePitchFromHand)}
-function animatePitchFromHand(now){if(state.phase!=="pitching")return;const raw=Math.min(1,(now-state.startedAt)/state.duration),depth=raw*raw*(3-2*raw),late=Math.max(0,(raw-.32)/.68),brk=late*late*(3-2*late),profile=state.profile||getPitcherProfile(state.pitcher),hand=profile.hand==="left"?1:-1,lowArm=profile.form==="under"?2:profile.form==="sidearm"?1:0,move=movements[state.pitch.statiz_code]||movements.other,breakX=move[0]*hand*(lowArm?1.15:1),x=state.releaseX*(1-depth)+state.targetX*depth+breakX*brk,y=state.releaseY+(63+state.targetY-state.releaseY)*depth-2.1*Math.sin(Math.PI*raw)+move[1]*brk*.065,scale=.38+Math.pow(raw,2.15)*3.05;state.ballX=x;state.ballY=y;state.ballScale=scale;ui.ball.style.left=`calc(50% + ${x}px)`;ui.ball.style.top=`${y}%`;ui.ball.style.transform=`scale(${scale}) rotate(${hand*raw*1080}deg)`;ui.ball.style.filter=`blur(${raw>.97?(raw-.97)*2:0}px)`;updateTrail(x,y,Math.max(.28,scale*.72));ui.needle.style.left=`${Math.min(99,raw*100)}%`;if(raw>=1)resolveMiss("루킹");else state.frame=requestAnimationFrame(animatePitchFromHand)}
+function animatePitchFromHand(now){if(state.phase!=="pitching")return;const raw=Math.min(1,(now-state.startedAt)/state.duration),depth=raw*raw*(3-2*raw),profile=state.profile||getPitcherProfile(state.pitcher),handMirror=profile.hand==="left"?-1:1,move=movementForPitch(state.pitch.statiz_code,profile),breakProgress=Math.max(0,(raw-move.onset)/(1-move.onset)),brk=breakProgress*breakProgress*(3-2*breakProgress),breakX=move.x*HORIZONTAL_BREAK_SCALE*handMirror,x=state.releaseX*(1-depth)+state.targetX*depth+breakX*brk,y=state.releaseY+(63+state.targetY-state.releaseY)*depth-2.1*Math.sin(Math.PI*raw)+move.y*brk*VERTICAL_BREAK_PERCENT_SCALE,scale=.38+Math.pow(raw,2.15)*3.05;state.ballX=x;state.ballY=y;state.ballScale=scale;ui.ball.style.left=`calc(50% + ${x}px)`;ui.ball.style.top=`${y}%`;ui.ball.style.transform=`scale(${scale}) rotate(${handMirror*raw*1080}deg)`;ui.ball.style.filter=`blur(${raw>.97?(raw-.97)*2:0}px)`;updateTrail(x,y,Math.max(.28,scale*.72));ui.needle.style.left=`${Math.min(99,raw*100)}%`;if(raw>=1)resolveMiss("루킹");else state.frame=requestAnimationFrame(animatePitchFromHand)}
 
 async function loadPlayers(){try{const response=await fetch("../output/pitchers.json",{cache:"no-store"});if(!response.ok)throw new Error(`데이터 응답 오류 (${response.status})`);const data=await response.json();state.players=data.players.filter(p=>usable(p).length);renderPitchers()}catch(error){ui.grid.innerHTML=`<div class="error">선수 데이터를 읽지 못했습니다.<br><small>${error.message}<br>run_game.ps1로 실행해 주세요.</small></div>`}}
 const usable=player=>player.pitches.filter(p=>Number(p.ratio)>0&&p.pitch_type!=="기타");
@@ -47,7 +78,7 @@ function weightedAverage(pitches){const valid=pitches.filter(p=>Number(p.velocit
 function renderPitchers(){ui.grid.innerHTML="";state.players.forEach((player,index)=>{const pitches=usable(player),profile=getPitcherProfile(player),primary=[...pitches].sort((a,b)=>b.ratio-a.ratio)[0],card=document.createElement("button");card.className="pitcher-card";card.innerHTML=`<span class="card-number">${String(index+1).padStart(2,"0")}</span><span class="player-silhouette"></span><div class="card-content"><span class="primary-pitch">ACE · ${primary.pitch_type} ${(primary.ratio*100).toFixed(1)}%</span><h2>${player.name}</h2><div class="meta">${profileLabel(profile)} · ${pitches.length}구종 · ${weightedAverage(pitches).toFixed(1)} km/h</div></div>`;card.onclick=()=>selectPitcher(player);ui.grid.append(card)})}
 function selectPitcher(player){cancelPitchPlayback();const profile=getPitcherProfile(player),lowArm=profile.form==="under"?2:profile.form==="sidearm"?1:0,hand=profile.hand==="left"?1:-1;Object.assign(state,{pitcher:player,profile,phase:"idle",hits:0,misses:0,streak:0,best:0});ui.pitcher.classList.remove("left-handed","sidearm","underhand","sprite-pitcher");if(profile.form==="over"||profile.form==="under")ui.pitcher.classList.add("sprite-pitcher");if(profile.hand==="left")ui.pitcher.classList.add("left-handed");if(profile.form==="sidearm")ui.pitcher.classList.add("sidearm");if(profile.form==="under")ui.pitcher.classList.add("underhand");ui.stage.style.setProperty("--release-x",`${hand*(lowArm?25:12)}px`);ui.stage.style.setProperty("--release-y",`${50.5+lowArm*2.4}%`);ui.select.classList.add("hidden");ui.game.classList.remove("hidden");ui.name.textContent=player.name;ui.season.textContent=`${player.season} SEASON · ${profileLabel(profile)}`;ui.arsenal.innerHTML=usable(player).sort((a,b)=>b.ratio-a.ratio).map(p=>`<span class="pitch-chip"><b>${p.pitch_type}</b> ${(p.ratio*100).toFixed(1)}% · ${p.velocity_kmh?p.velocity_kmh.toFixed(1):"-"}</span>`).join("");resetRound("준비되면 투구를 시작하세요");updateScore()}
 function weightedPitch(){const pitches=usable(state.pitcher),total=pitches.reduce((s,p)=>s+p.ratio,0);let draw=Math.random()*total;for(const pitch of pitches){draw-=pitch.ratio;if(draw<=0)return pitch}return pitches.at(-1)}
-async function beginPitch(){if(state.phase!=="idle")return;state.phase="loading";await (spriteReady[state.profile?.form]||Promise.resolve());await waitForPaint();if(state.phase!=="loading")return;cancelPitchPlayback();state.pitch=weightedPitch();const velocity=Number(state.pitch.velocity_kmh)||135;state.duration=MOUND_TO_PLATE_METERS/(velocity/3.6)*1000*GAMEPLAY_FLIGHT_TIME_SCALE;state.phase="windup";state.spritePose=0;state.sequenceStartedAt=performance.now();ui.result.classList.add("hidden");ui.ball.classList.add("hidden");ui.pitcher.classList.remove("windup");void ui.pitcher.offsetWidth;ui.pitcher.classList.add("windup");setPitcherFrame(0);setAction("준비");ui.status.textContent="투수 와인드업";ui.last.textContent="손에서 공이 떠나는 순간을 보세요";state.spriteTimer=requestAnimationFrame(playPitcherSequence)}
+async function beginPitch(){if(state.phase!=="idle")return;state.phase="loading";await (spriteReady[state.profile?.form]||Promise.resolve());await waitForPaint();if(state.phase!=="loading")return;cancelPitchPlayback();state.pitch=weightedPitch();state.duration=flightDurationForVelocity(state.pitch.velocity_kmh);state.phase="windup";state.spritePose=0;state.sequenceStartedAt=performance.now();ui.result.classList.add("hidden");ui.ball.classList.add("hidden");ui.pitcher.classList.remove("windup");void ui.pitcher.offsetWidth;ui.pitcher.classList.add("windup");setPitcherFrame(0);setAction("준비");ui.status.textContent="투수 와인드업";ui.last.textContent="손에서 공이 떠나는 순간을 보세요";state.spriteTimer=requestAnimationFrame(playPitcherSequence)}
 function swing(){if(state.phase!=="pitching")return;const elapsed=performance.now()-state.startedAt,progress=Math.min(1,elapsed/state.duration),errorMs=elapsed-state.duration*CONTACT_PROGRESS,absoluteErrorMs=Math.abs(errorMs);cancelAnimationFrame(state.frame);ui.bat.classList.add("swinging");scheduleEffect(()=>ui.bat.classList.remove("swinging"),260);if(absoluteErrorMs<=PERFECT_WINDOW_MS)resolveHit("PERFECT!","result-perfect",3);else if(absoluteErrorMs<=HIT_WINDOW_MS)resolveHit(errorMs<0?"조금 빨랐지만 안타!":"조금 늦었지만 안타!","result-hit",1);else resolveMiss(progress<CONTACT_PROGRESS?"너무 빨랐습니다":"너무 늦었습니다")}
 function animateBattedBall(done){state.phase="contact";clearTrail();ui.stage.classList.remove("pitch-flight");ui.stage.classList.add("camera-hit","batted-ball-flight");ui.burst.style.left=`calc(50% + ${state.ballX}px)`;ui.burst.style.top=`${state.ballY}%`;ui.burst.classList.remove("hidden");ui.burst.style.animation="none";void ui.burst.offsetWidth;ui.burst.style.animation="";const startX=state.ballX,startY=state.ballY,startScale=state.ballScale,startedAt=performance.now();function fly(now){if(state.phase!=="contact")return;const progress=Math.min(1,(now-startedAt)/BATTED_BALL_DURATION_MS),ease=1-Math.pow(1-progress,3),x=startX*(1-ease)+(startX<0?90:-90)*ease,y=startY*(1-ease)+24*ease-18*Math.sin(Math.PI*progress),scale=startScale*(1-ease)+.34*ease;ui.ball.style.left=`calc(50% + ${x}px)`;ui.ball.style.top=`${y}%`;ui.ball.style.transform=`scale(${scale}) rotate(${progress*900}deg)`;ui.ball.style.filter="blur(0)";if(progress<1)state.frame=requestAnimationFrame(fly);else{ui.burst.classList.add("hidden");ui.stage.classList.remove("camera-hit","batted-ball-flight");finishBallVisuals();done()}}state.frame=requestAnimationFrame(fly)}
 function resolveHit(message,className,points){state.hits++;state.streak+=points;state.best=Math.max(state.best,state.streak);animateBattedBall(()=>showResult(message,className))}
