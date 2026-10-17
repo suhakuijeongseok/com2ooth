@@ -71,8 +71,9 @@ BALL_INFO = {
 }
 
 
-def usable_pitches(player: dict) -> list[dict]:
-    return [p for p in player.get("pitches", []) if float(p.get("ratio") or 0) > 0 and p.get("pitch_type") != "기타"]
+def usable_pitches(player) -> list:
+    pitches = player.pitches if isinstance(player, Pitcher) else player.get("pitches", [])
+    return [p for p in pitches if float(p.get("ratio") or 0) > 0 and p.get("pitch_type") != "기타"]
 
 
 def flight_duration_ms(velocity_kmh) -> float:
@@ -96,19 +97,134 @@ def score_for(ball_type: str, base: int, distance_m: int = 120) -> int:
     return distance_score * {"normal": 1, "x2": 2, "x3": 3, "x4": 4}.get(ball_type, 1)
 
 
-def load_players() -> list[dict]:
+@dataclass(frozen=True)
+class Pitch:
+    """One pitch type and its physical movement data."""
+
+    pitch_type: str
+    statiz_code: str
+    ratio: float
+    velocity_kmh: float
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "Pitch":
+        return cls(
+            pitch_type=str(data.get("pitch_type", "기타")),
+            statiz_code=str(data.get("statiz_code", "other")),
+            ratio=float(data.get("ratio") or 0),
+            velocity_kmh=float(data.get("velocity_kmh") or 135),
+        )
+
+    def get(self, key, default=None):
+        return getattr(self, key, default)
+
+    def __getitem__(self, key):
+        return getattr(self, key)
+
+    def move(self, raw, release, destination, hand, form):
+        """Return screen position and scale for this pitch's current progress."""
+        depth = smooth(raw)
+        movement_table = UNDER_MOVEMENTS if form == "under" else MOVEMENTS
+        mx, my, onset = movement_table.get(self.statiz_code, MOVEMENTS["other"])
+        mirror = -1 if hand == "left" else 1
+        break_progress = smooth(max(0, (raw - onset) / (1 - onset)))
+        x = lerp(release[0], destination[0], depth) + mx * 1.2 * mirror * break_progress
+        y = (lerp(release[1], destination[1], depth)
+             - 15 * math.sin(math.pi * raw) + my * .105 * break_progress)
+        return (x, y), .38 + raw ** 2.15 * 3.05
+
+    @staticmethod
+    def reach_plate(raw):
+        return raw >= 1
+
+
+@dataclass
+class Pitcher:
+    """A real pitcher and the pitch repertoire used to select each delivery."""
+
+    player_id: str
+    name: str
+    season: str
+    pitches: list[Pitch]
+    throw_hand: str = "right"
+    pitching_form: str = "over"
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "Pitcher":
+        return cls(
+            player_id=str(data.get("player_id", "sample")),
+            name=str(data.get("name", "샘플 투수")),
+            season=str(data.get("season", "2026")),
+            pitches=[Pitch.from_dict(p) for p in usable_pitches(data)],
+            throw_hand=str(data.get("throw_hand", "right")),
+            pitching_form=str(data.get("pitching_form", "over")),
+        )
+
+    def get(self, key, default=None):
+        return getattr(self, key, default)
+
+    def __getitem__(self, key):
+        return getattr(self, key)
+
+    def select_pitch(self) -> Pitch:
+        return random.choices(self.pitches, weights=[p.ratio for p in self.pitches], k=1)[0]
+
+    def get_average_speed(self) -> float:
+        total_ratio = sum(p.ratio for p in self.pitches)
+        if not total_ratio:
+            return 0.0
+        return sum(p.velocity_kmh * p.ratio for p in self.pitches) / total_ratio
+
+
+@dataclass
+class Batter:
+    """Own batting results, timing judgement, and score updates."""
+
+    hits: int = 0
+    misses: int = 0
+    streak: int = 0
+    best_streak: int = 0
+    round_score: int = 0
+    total_score: int = 0
+
+    def swing(self, timing_error):
+        if abs(timing_error) <= PERFECT_WINDOW_MS:
+            return "PERFECT!", BASE_PERFECT_SCORE, GOLD
+        if abs(timing_error) <= HIT_WINDOW_MS:
+            return "HIT!", BASE_GOOD_SCORE, CYAN
+        return None
+
+    def update_score(self, ball_type, base, distance_m) -> int:
+        awarded = score_for(ball_type, base, distance_m)
+        self.hits += 1
+        self.streak += 1
+        self.best_streak = max(self.best_streak, self.streak)
+        self.round_score += awarded
+        self.total_score += awarded
+        return awarded
+
+    def record_miss(self):
+        self.misses += 1
+        self.streak = 0
+
+    def start_round(self):
+        self.round_score = 0
+
+
+def load_players() -> list[Pitcher]:
     try:
         data = json.loads(DATA_FILE.read_text(encoding="utf-8"))
-        players = [p for p in data.get("players", []) if usable_pitches(p)]
+        players = [Pitcher.from_dict(p) for p in data.get("players", []) if usable_pitches(p)]
         if players:
             return players
     except (OSError, ValueError):
         pass
-    return [{"player_id": "sample", "name": "샘플 투수", "season": "2026", "pitches": [
+    fallback = {"player_id": "sample", "name": "샘플 투수", "season": "2026", "pitches": [
         {"pitch_type": "포심", "statiz_code": "4seam", "ratio": .55, "velocity_kmh": 147.0},
         {"pitch_type": "슬라이더", "statiz_code": "slid", "ratio": .30, "velocity_kmh": 133.0},
         {"pitch_type": "체인지업", "statiz_code": "chan", "ratio": .15, "velocity_kmh": 129.0},
-    ]}]
+    ]}
+    return [Pitcher.from_dict(fallback)]
 
 
 @lru_cache(maxsize=96)
@@ -186,9 +302,9 @@ def make_bat_crack_sound() -> pygame.mixer.Sound | None:
 class State:
     screen: str = "title"
     phase: str = "idle"
-    player: dict | None = None
+    player: Pitcher | None = None
     profile: tuple[str, str] = ("right", "over")
-    pitch: dict | None = None
+    pitch: Pitch | None = None
     selected: int = 0
     phase_started: int = 0
     flight_started: int = 0
@@ -197,14 +313,8 @@ class State:
     ball_pos: tuple[float, float] = (WIDTH / 2, 320)
     ball_scale: float = .4
     trail: list[tuple[float, float, float]] = field(default_factory=list)
-    hits: int = 0
-    misses: int = 0
-    streak: int = 0
-    best: int = 0
     thrown: int = 0
     round_no: int = 1
-    round_score: int = 0
-    total_score: int = 0
     order: list[str] = field(default_factory=make_ball_order)
     ball_type: str = "normal"
     message: str = "투수를 선택하세요"
@@ -228,6 +338,8 @@ class Game:
         self.clock = pygame.time.Clock()
         self.players = load_players()
         self.state = State()
+        self.pitcher: Pitcher | None = None
+        self.batter = Batter()
         self.action_rect = pygame.Rect(520, 626, 240, 64)
         self.start_rect = pygame.Rect(490, 620, 300, 64)
         self.stadium = self.load_stadium()
@@ -340,20 +452,19 @@ class Game:
             pygame.mixer.music.fadeout(500)
         if self.ambient_channel and self.sounds["ambient"] and not self.ambient_channel.get_busy():
             self.ambient_channel.play(random.choice(self.sounds["ambient"]), loops=-1, fade_ms=700)
-        s.player = self.players[s.selected]
+        self.pitcher = self.players[s.selected]
+        self.batter = Batter()
+        s.player = self.pitcher
         s.profile = self.profile_for(s.player)
-        s.screen, s.hits, s.misses, s.streak, s.best = "game", 0, 0, 0, 0
-        s.round_no, s.total_score = 1, 0
-        self.prepare_round()
+        s.screen = "game"
+        s.round_no = 1
+        self.start_round()
         self.reset_pitch("준비되면 투구를 시작하세요")
 
-    def prepare_round(self):
+    def start_round(self):
         s = self.state
-        s.thrown, s.round_score, s.order = 0, 0, make_ball_order()
-
-    def weighted_pitch(self):
-        pitches = usable_pitches(self.state.player)
-        return random.choices(pitches, weights=[float(p["ratio"]) for p in pitches], k=1)[0]
+        s.thrown, s.order = 0, make_ball_order()
+        self.batter.start_round()
 
     def reset_pitch(self, message="다음 공을 준비하세요"):
         s = self.state
@@ -364,7 +475,7 @@ class Game:
     def begin_pitch(self):
         s = self.state
         s.ball_type = s.order[s.thrown]
-        s.pitch = self.weighted_pitch()
+        s.pitch = self.pitcher.select_pitch()
         s.duration = flight_duration_ms(s.pitch.get("velocity_kmh"))
         s.phase, s.phase_started = "windup", pygame.time.get_ticks()
         label = BALL_INFO[s.ball_type][0]
@@ -387,12 +498,14 @@ class Game:
             return
         elapsed = now - s.flight_started
         error = elapsed - s.duration * CONTACT_PROGRESS
-        if abs(error) <= PERFECT_WINDOW_MS:
-            self.start_hit_flight(now, "PERFECT!", BASE_PERFECT_SCORE, GOLD)
-        elif abs(error) <= HIT_WINDOW_MS:
-            self.start_hit_flight(now, "HIT!", BASE_GOOD_SCORE, CYAN)
+        judgement = self.judge_timing(error)
+        if judgement:
+            self.start_hit_flight(now, *judgement)
         else:
             self.resolve_miss("너무 빨랐습니다" if error < 0 else "너무 늦었습니다")
+
+    def judge_timing(self, timing_error):
+        return self.batter.swing(timing_error)
 
     def start_hit_flight(self, now, label, base, color):
         """Turn the pitched ball around and send it deep into the stadium."""
@@ -420,12 +533,7 @@ class Game:
 
     def resolve_hit(self, label, base, color):
         s = self.state
-        awarded = score_for(s.ball_type, base, s.home_run_distance)
-        s.hits += 1
-        s.streak += 1
-        s.best = max(s.best, s.streak)
-        s.round_score += awarded
-        s.total_score += awarded
+        awarded = self.batter.update_score(s.ball_type, base, s.home_run_distance)
         prefix = "감점" if awarded < 0 else label
         self.finish_pitch(
             f"{prefix} · {s.home_run_distance}m  {awarded:+,}점",
@@ -437,8 +545,7 @@ class Game:
         self.play_effect("swing_miss" if swung else "catch", volume=.68)
         if random.random() < .45:
             self.play_crowd("disappointed")
-        s.misses += 1
-        s.streak = 0
+        self.batter.record_miss()
         self.finish_pitch(message, RED)
 
     def finish_pitch(self, message, color):
@@ -465,23 +572,18 @@ class Game:
             self.release(now)
         elif s.phase == "pitching":
             raw = min(1.0, (now - s.flight_started) / s.duration)
-            depth = smooth(raw)
             hand, form = s.profile
-            movement = (UNDER_MOVEMENTS if form == "under" else MOVEMENTS).get(s.pitch.get("statiz_code"), MOVEMENTS["other"])
-            mx, my, onset = movement
-            mirror = -1 if hand == "left" else 1
-            br = smooth(max(0, (raw - onset) / (1 - onset)))
             release_x = WIDTH / 2 + (-22 if hand == "right" else 22)
             release_y = 340 if form == "under" else 292
             end_x = WIDTH / 2 + s.target[0]
             end_y = 500 + s.target[1]
-            x = lerp(release_x, end_x, depth) + mx * 1.2 * mirror * br
-            y = lerp(release_y, end_y, depth) - 15 * math.sin(math.pi * raw) + my * .105 * br
-            s.ball_scale = .38 + raw ** 2.15 * 3.05
-            s.ball_pos = (x, y)
+            s.ball_pos, s.ball_scale = s.pitch.move(
+                raw, (release_x, release_y), (end_x, end_y), hand, form
+            )
+            x, y = s.ball_pos
             s.trail.insert(0, (x, y, s.ball_scale))
             del s.trail[6:]
-            if raw >= 1:
+            if s.pitch.reach_plate(raw):
                 self.resolve_miss("루킹", swung=False)
         elif s.phase == "hit_flight":
             raw = min(1.0, (now - s.hit_started) / s.hit_duration)
@@ -508,7 +610,7 @@ class Game:
         elif s.phase == "result": self.continue_after_result()
         elif s.phase == "summary":
             s.round_no += 1
-            self.prepare_round()
+            self.start_round()
             self.reset_pitch(f"ROUND {s.round_no} · 새 15구를 준비하세요")
 
     def handle_event(self, event):
@@ -667,9 +769,10 @@ class Game:
         text(c, f"ROUND {s.round_no}", 14, CYAN, (80, 46), bold=True)
         # Keep the current pitch number on screen until the player advances.
         visible_pitch = s.thrown if s.phase in ("result", "summary") else s.thrown + 1
-        stats = [("HIT", s.hits), ("MISS", s.misses), ("BEST", s.best),
+        stats = [("HIT", self.batter.hits), ("MISS", self.batter.misses),
+                 ("BEST", self.batter.best_streak),
                  ("PITCH", f"{min(max(visible_pitch, 1), PITCHES_PER_ROUND)}/{PITCHES_PER_ROUND}"),
-                 ("TOTAL", f"{s.total_score:,}")]
+                 ("TOTAL", f"{self.batter.total_score:,}")]
         for i, (label, value) in enumerate(stats):
             x = 800 + i * 92
             text(c, label, 11, MUTED, (x, 15), bold=True)
@@ -719,10 +822,10 @@ class Game:
         text(c, s.player["name"], 18, MUTED, (WIDTH//2, 302), center=True,
              max_width=inner_width, clip_rect=rect)
         text(c, "이번 라운드", 18, MUTED, (460, 355), max_width=145, clip_rect=rect)
-        text(c, f"{s.round_score:,}점", 27, GOLD, (820, 350), right=True, bold=True,
+        text(c, f"{self.batter.round_score:,}점", 27, GOLD, (820, 350), right=True, bold=True,
              max_width=215, clip_rect=rect)
         text(c, "누적 점수", 18, MUTED, (460, 405), max_width=145, clip_rect=rect)
-        text(c, f"{s.total_score:,}점", 27, CYAN, (820, 400), right=True, bold=True,
+        text(c, f"{self.batter.total_score:,}점", 27, CYAN, (820, 400), right=True, bold=True,
              max_width=215, clip_rect=rect)
         text(c, "SPACE/ENTER: 같은 투수로 계속  ·  ESC: 투수 선택", 15, WHITE,
              (WIDTH//2, 475), center=True, max_width=inner_width, clip_rect=rect)
